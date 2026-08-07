@@ -1,0 +1,8 @@
+{
+  "recommendations": [
+    "charliermarsh.ruff",
+    "editorconfig.editorconfig",
+    "ms-python.python",
+    "esbenp.prettier-vscode"
+  ]
+}

@@ -1,0 +1,24 @@
+[tool.ruff]
+indent-width = 4
+line-length = 100
+target-version = "py312"
+force-exclude = true
+show-fixes = true
+unsafe-fixes = false
+
+
+[tool.ruff.lint]
+# Keep the default rule set focused on correctness, syntax, and import order.
+# Broader rule families can be added incrementally without blocking existing nodes.
+select = ["E4", "E7", "E9", "F", "I"]
+ignore = ["E501"]
+fixable = ["ALL"]
+
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+line-ending = "lf"
+skip-magic-trailing-comma = false
+docstring-code-format = true
+docstring-code-line-length = "dynamic"
