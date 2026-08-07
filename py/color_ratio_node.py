@@ -46,3 +46,7 @@ class ColorRatioCalculator:
         ratio = color_pixels / total_pixels
 
         return (float(round(ratio, 4)),)
+
+
+NODE_CLASS_MAPPINGS = {"ColorRatioCalculator": ColorRatioCalculator}
+NODE_DISPLAY_NAME_MAPPINGS = {"ColorRatioCalculator": "Color Ratio Calculator"}

@@ -1,38 +1,38 @@
 # -*- coding: utf-8 -*-
 
-from .py.bimoai_text_split import BimoAITextSplitIndex
-from .py.color_ratio_node import ColorRatioCalculator
-from .py.load_image_from_url import LoadImageAndMaskFromUrl
-from .py.mask_sort import MaskSorter
-from .py.split_string import SplitString
-from .py.switch_case_node import SwitchCaseNodePro
-from .py.was_text_shuffle import WASTextShuffle
-from .py.zho_text_image import Text_Image_Multiline_Zho_autofit, Text_Image_Zho_autofit
+from importlib import import_module
+from pkgutil import iter_modules
+
+from . import py as _node_package
 
 __all__ = ["NODE_CLASS_MAPPINGS", "NODE_DISPLAY_NAME_MAPPINGS"]
 
 
-NODE_CLASS_MAPPINGS = {
-    "BimoAITextSplitIndex": BimoAITextSplitIndex,
-    "ColorRatioCalculator": ColorRatioCalculator,
-    "LoadImageAndMaskFromUrl": LoadImageAndMaskFromUrl,
-    "MaskSorter": MaskSorter,
-    "SplitString": SplitString,
-    "SwitchCaseNodePro": SwitchCaseNodePro,
-    "Text_Image_Multiline_Zho_autofit": Text_Image_Multiline_Zho_autofit,
-    "Text_Image_Zho_autofit": Text_Image_Zho_autofit,
-    "WASTextShuffle": WASTextShuffle,
-}
+NODE_CLASS_MAPPINGS = {}
+NODE_DISPLAY_NAME_MAPPINGS = {}
 
 
-NODE_DISPLAY_NAME_MAPPINGS = {
-    "BimoAITextSplitIndex": "BimoAI文本分隔元素读取",
-    "ColorRatioCalculator": "Color Ratio Calculator",
-    "LoadImageAndMaskFromUrl": "Load Image And Mask From Url",
-    "MaskSorter": "🧩 Mask Sorter (多蒙版排序)",
-    "SplitString": "Split String",
-    "SwitchCaseNodePro": "Switch Case Node Pro",
-    "Text_Image_Multiline_Zho_autofit": "Text Image Multiline Zho AutoFit",
-    "Text_Image_Zho_autofit": "Text Image Zho AutoFit",
-    "WASTextShuffle": "WAS Text Shuffle",
-}
+def _load_node_mappings():
+    """Load mappings from Python modules directly inside the ``py`` package."""
+    modules = sorted(
+        iter_modules(_node_package.__path__, f"{_node_package.__name__}."),
+        key=lambda module_info: module_info.name,
+    )
+
+    for module_info in modules:
+        # Only load py/*.py; do not recurse into child packages.
+        if module_info.ispkg:
+            continue
+
+        module = import_module(module_info.name)
+
+        class_mappings = getattr(module, "NODE_CLASS_MAPPINGS", None)
+        if class_mappings is not None:
+            NODE_CLASS_MAPPINGS.update(class_mappings)
+
+        display_name_mappings = getattr(module, "NODE_DISPLAY_NAME_MAPPINGS", None)
+        if display_name_mappings is not None:
+            NODE_DISPLAY_NAME_MAPPINGS.update(display_name_mappings)
+
+
+_load_node_mappings()

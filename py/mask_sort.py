@@ -117,3 +117,7 @@ class MaskSorter:
         sorted_np = [r["mask"].astype(np.float32) for r in records]
         sorted_tensor = torch.from_numpy(np.stack(sorted_np, axis=0)).to(device=device, dtype=dtype)
         return (sorted_tensor,)
+
+
+NODE_CLASS_MAPPINGS = {"MaskSorter": MaskSorter}
+NODE_DISPLAY_NAME_MAPPINGS = {"MaskSorter": "🧩 Mask Sorter (多蒙版排序)"}

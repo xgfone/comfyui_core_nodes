@@ -88,3 +88,7 @@ class LoadImageAndMaskFromUrl:
             images,
             masks,
         )
+
+
+NODE_CLASS_MAPPINGS = {"LoadImageAndMaskFromUrl": LoadImageAndMaskFromUrl}
+NODE_DISPLAY_NAME_MAPPINGS = {"LoadImageAndMaskFromUrl": "Load Image And Mask From Url"}

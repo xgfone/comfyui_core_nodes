@@ -707,3 +707,14 @@ class Text_Image_Multiline_Zho_autofit:
         )
 
         return (pil2tensor(img),)
+
+
+NODE_CLASS_MAPPINGS = {
+    "Text_Image_Multiline_Zho_autofit": Text_Image_Multiline_Zho_autofit,
+    "Text_Image_Zho_autofit": Text_Image_Zho_autofit,
+}
+
+NODE_DISPLAY_NAME_MAPPINGS = {
+    "Text_Image_Multiline_Zho_autofit": "Text Image Multiline Zho AutoFit",
+    "Text_Image_Zho_autofit": "Text Image Zho AutoFit",
+}

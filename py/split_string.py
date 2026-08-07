@@ -1,4 +1,4 @@
-from .py import any
+from . import any
 
 
 class SplitString:
@@ -70,3 +70,7 @@ class SplitString:
             string_9,
             string_10,
         )
+
+
+NODE_CLASS_MAPPINGS = {"SplitString": SplitString}
+NODE_DISPLAY_NAME_MAPPINGS = {"SplitString": "Split String"}

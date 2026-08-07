@@ -1,4 +1,4 @@
-from .py import any
+from . import any
 
 
 class SwitchCaseNodePro:
@@ -81,3 +81,7 @@ class SwitchCaseNodePro:
             output = input_9
 
         return (output,)
+
+
+NODE_CLASS_MAPPINGS = {"SwitchCaseNodePro": SwitchCaseNodePro}
+NODE_DISPLAY_NAME_MAPPINGS = {"SwitchCaseNodePro": "Switch Case Node Pro"}

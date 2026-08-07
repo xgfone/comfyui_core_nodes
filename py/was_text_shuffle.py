@@ -28,3 +28,7 @@ class WASTextShuffle:
         new_text = separator.join(text_list)
 
         return (new_text,)
+
+
+NODE_CLASS_MAPPINGS = {"WASTextShuffle": WASTextShuffle}
+NODE_DISPLAY_NAME_MAPPINGS = {"WASTextShuffle": "WAS Text Shuffle"}

@@ -40,3 +40,7 @@ class BimoAITextSplitIndex:
 
         selected_index = min(max(0, int(index)), len(items) - 1)
         return (items[selected_index],)
+
+
+NODE_CLASS_MAPPINGS = {"BimoAITextSplitIndex": BimoAITextSplitIndex}
+NODE_DISPLAY_NAME_MAPPINGS = {"BimoAITextSplitIndex": "BimoAI文本分隔元素读取"}
