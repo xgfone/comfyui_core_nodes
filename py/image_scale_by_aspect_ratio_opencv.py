@@ -27,17 +27,6 @@ def log(message: str, message_type: str = "info"):
     print(f"# 😺dzNodes: {name} -> {message}")
 
 
-try:
-    from cv2.ximgproc import guidedFilter
-except ImportError:
-    # print(e)
-    log(
-        "Cannot import name 'guidedFilter' from 'cv2.ximgproc'"
-        "\nA few nodes cannot works properly, while most nodes are not affected. Please REINSTALL package 'opencv-contrib-python'."
-        "\nFor detail refer to \033[4mhttps://github.com/chflame163/ComfyUI_LayerStyle/issues/5\033[0m"
-    )
-
-
 # 向上取整数倍
 def num_round_up_to_multiple(number: int, multiple: int) -> int:
     remainder = number % multiple
