@@ -50,18 +50,22 @@ def number_to_chinese(number: int) -> str:
     return "".join(result)
 
 
-def _section_after(
-    source: str,
-    start_pattern: Pattern[str],
-    end_pattern: Pattern[str] | None,
-) -> str:
-    """Return text following a section marker up to the next section marker."""
+def _section_after(source: str, start_pattern: Pattern[str]) -> str:
+    """Return a top-level section regardless of section ordering."""
 
     start = start_pattern.search(source)
     if not start:
         return ""
-    end = end_pattern.search(source, start.end()) if end_pattern else None
-    return source[start.end() : end.start() if end else len(source)]
+
+    # A section ends at whichever top-level marker occurs next. In particular,
+    # <main> must stop at <images> when no <poses> section is present.
+    following_starts: list[int] = []
+    for pattern in (_MAIN_RE, _POSES_RE, _IMAGES_RE):
+        following = pattern.search(source, start.end())
+        if following:
+            following_starts.append(following.start())
+    end = min(following_starts, default=len(source))
+    return source[start.end() : end]
 
 
 def _parse_count_blocks(section: str, marker: Pattern[str]) -> dict[int, str]:
@@ -98,9 +102,9 @@ def process_prompt(prompt: str, people_count: int = 1) -> tuple[str, str]:
     if not 1 <= people_count <= 9999:
         raise ValueError("人数必须在 1 到 9999 之间")
 
-    main_prompt = _section_after(prompt, _MAIN_RE, _POSES_RE).strip()
-    pose_section = _section_after(prompt, _POSES_RE, _IMAGES_RE)
-    image_section = _section_after(prompt, _IMAGES_RE, None)
+    main_prompt = _section_after(prompt, _MAIN_RE).strip()
+    pose_section = _section_after(prompt, _POSES_RE)
+    image_section = _section_after(prompt, _IMAGES_RE)
 
     pose_options = _parse_count_blocks(pose_section, _POSE_BLOCK_RE)
     image_options = _parse_count_blocks(image_section, _IMAGE_GROUP_RE)
