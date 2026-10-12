@@ -16,18 +16,18 @@ class SwitchCaseNodePro:
                 "case_7": ("STRING", {"default": "7", "multiline": False}),
                 "case_8": ("STRING", {"default": "8", "multiline": False}),
                 "case_9": ("STRING", {"default": "9", "multiline": False}),
-                "input_default": (any,),
+                "input_default": (any, {"lazy": True}),
             },
             "optional": {
-                "input_1": (any,),
-                "input_2": (any,),
-                "input_3": (any,),
-                "input_4": (any,),
-                "input_5": (any,),
-                "input_6": (any,),
-                "input_7": (any,),
-                "input_8": (any,),
-                "input_9": (any,),
+                "input_1": (any, {"lazy": True}),
+                "input_2": (any, {"lazy": True}),
+                "input_3": (any, {"lazy": True}),
+                "input_4": (any, {"lazy": True}),
+                "input_5": (any, {"lazy": True}),
+                "input_6": (any, {"lazy": True}),
+                "input_7": (any, {"lazy": True}),
+                "input_8": (any, {"lazy": True}),
+                "input_9": (any, {"lazy": True}),
             },
         }
 
@@ -35,6 +35,15 @@ class SwitchCaseNodePro:
     RETURN_NAMES = ("?",)
     FUNCTION = "switch_case"
     CATEGORY = "ConchShellCopy/Utility"
+
+    def check_lazy_status(self, switch_condition, **kwargs):
+        # Unconnected optional inputs are absent; unresolved connections are None.
+        for i in range(1, 10):
+            input_name = f"input_{i}"
+            if switch_condition == kwargs[f"case_{i}"] and input_name in kwargs:
+                return [input_name] if kwargs[input_name] is None else []
+
+        return ["input_default"] if kwargs.get("input_default") is None else []
 
     def switch_case(
         self,
