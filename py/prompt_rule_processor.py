@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import re
 from typing import Mapping, Pattern
 
@@ -9,6 +10,7 @@ from typing import Mapping, Pattern
 _MAIN_RE = re.compile(r"\\?<main\s*>", re.IGNORECASE)
 _POSES_RE = re.compile(r"\\?<poses\s*>", re.IGNORECASE)
 _IMAGES_RE = re.compile(r"\\?<images\s*>", re.IGNORECASE)
+_CONFIG_RE = re.compile(r"\\?<config\s*>", re.IGNORECASE)
 _POSE_BLOCK_RE = re.compile(r"\\?<pose\s+count\s*=\s*[\"']?(\d+)[\"']?\s*>", re.IGNORECASE)
 _IMAGE_GROUP_RE = re.compile(r"\\?<image_group\s+count\s*=\s*[\"']?(\d+)[\"']?\s*>", re.IGNORECASE)
 _IMAGE_RE = re.compile(r"\\?<image\s*>", re.IGNORECASE)
@@ -60,7 +62,7 @@ def _section_after(source: str, start_pattern: Pattern[str]) -> str:
     # A section ends at whichever top-level marker occurs next. In particular,
     # <main> must stop at <images> when no <poses> section is present.
     following_starts: list[int] = []
-    for pattern in (_MAIN_RE, _POSES_RE, _IMAGES_RE):
+    for pattern in (_MAIN_RE, _POSES_RE, _IMAGES_RE, _CONFIG_RE):
         following = pattern.search(source, start.end())
         if following:
             following_starts.append(following.start())
@@ -94,8 +96,32 @@ def _format_image_group(image_group: str) -> str:
     return "\n<image>\n".join(entries)
 
 
-def process_prompt(prompt: str, people_count: int = 1) -> tuple[str, str]:
-    """Process the marked source string and return prompt plus image URL text."""
+def _parse_config(config_section: str) -> str:
+    """Convert one-key-per-line config text into a Unicode JSON object."""
+
+    config: dict[str, str] = {}
+    for raw_line in config_section.splitlines():
+        line = raw_line.strip()
+        if not line:
+            continue
+
+        english_colon = line.find(":")
+        chinese_colon = line.find("：")
+        positions = [position for position in (english_colon, chinese_colon) if position >= 0]
+        if not positions:
+            continue
+
+        delimiter_position = min(positions)
+        key = line[:delimiter_position].strip()
+        value = line[delimiter_position + 1 :].strip()
+        if key:
+            config[key] = value
+
+    return json.dumps(config, ensure_ascii=False)
+
+
+def process_prompt(prompt: str, people_count: int = 1) -> tuple[str, str, str]:
+    """Return the processed prompt, image URL text, and config JSON text."""
 
     prompt = "" if prompt is None else str(prompt)
     people_count = 1 if people_count is None else int(people_count)
@@ -105,6 +131,7 @@ def process_prompt(prompt: str, people_count: int = 1) -> tuple[str, str]:
     main_prompt = _section_after(prompt, _MAIN_RE).strip()
     pose_section = _section_after(prompt, _POSES_RE)
     image_section = _section_after(prompt, _IMAGES_RE)
+    config_section = _section_after(prompt, _CONFIG_RE)
 
     pose_options = _parse_count_blocks(pose_section, _POSE_BLOCK_RE)
     image_options = _parse_count_blocks(image_section, _IMAGE_GROUP_RE)
@@ -116,7 +143,7 @@ def process_prompt(prompt: str, people_count: int = 1) -> tuple[str, str]:
     result_prompt = _POSE_PROMPT_RE.sub(lambda _: selected_pose, main_prompt)
     result_prompt = _COUNT_RE.sub(lambda _: number_to_chinese(people_count), result_prompt)
 
-    return result_prompt, _format_image_group(selected_images)
+    return result_prompt, _format_image_group(selected_images), _parse_config(config_section)
 
 
 class PromptRuleProcessor:
@@ -131,7 +158,7 @@ class PromptRuleProcessor:
                     {
                         "multiline": True,
                         "default": "",
-                        "placeholder": "输入包含 <main>、<poses>、<images> 等标签的提示词",
+                        "placeholder": "输入包含 <main>、<poses>、<images>、<config> 等标签的提示词",
                     },
                 ),
             },
@@ -143,11 +170,11 @@ class PromptRuleProcessor:
             },
         }
 
-    RETURN_TYPES = ("STRING", "STRING")
-    RETURN_NAMES = ("prompt", "image_urls")
+    RETURN_TYPES = ("STRING", "STRING", "STRING")
+    RETURN_NAMES = ("prompt", "image_urls", "config_json")
     FUNCTION = "process"
     CATEGORY = "文本/提示词处理"
-    DESCRIPTION = "按显式人数配置选择姿势提示词和图片 URL，并替换提示词占位符。"
+    DESCRIPTION = "按人数处理提示词和图片 URL，并将配置区段转换为 JSON。"
 
     def process(self, prompt: str, people_count: int = 1):
         return process_prompt(prompt, people_count)
