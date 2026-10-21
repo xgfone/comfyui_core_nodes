@@ -26,8 +26,12 @@ class BimoAITextSplitIndex:
             }
         }
 
-    RETURN_TYPES = ("STRING",)
+    RETURN_TYPES = ("STRING", "STRING")
     RETURN_NAMES = ("文本输出",)
+    OUTPUT_IS_LIST = (
+        False,
+        True,
+    )
     FUNCTION = "split_and_index"
     CATEGORY = "BIMOAI/文本工具"
     DESCRIPTION = "通过分隔符拆分文本，然后通过index读取元素，若超出范围时返回最后一个元素。"
@@ -39,7 +43,8 @@ class BimoAITextSplitIndex:
             items = input.split(sep)
 
         selected_index = min(max(0, int(index)), len(items) - 1)
-        return (items[selected_index],)
+
+        return (items[selected_index], items)
 
 
 NODE_CLASS_MAPPINGS = {"BimoAITextSplitIndex": BimoAITextSplitIndex}
