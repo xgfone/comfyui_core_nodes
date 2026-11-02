@@ -11,6 +11,7 @@ _MAIN_RE = re.compile(r"\\?<main\s*>", re.IGNORECASE)
 _POSES_RE = re.compile(r"\\?<poses\s*>", re.IGNORECASE)
 _IMAGES_RE = re.compile(r"\\?<images\s*>", re.IGNORECASE)
 _CONFIG_RE = re.compile(r"\\?<config\s*>", re.IGNORECASE)
+_ADD_PARAM_RE = re.compile(r"\\?<add_param\s*>", re.IGNORECASE)
 _POSE_BLOCK_RE = re.compile(r"\\?<pose\s+count\s*=\s*[\"']?(\d+)[\"']?\s*>", re.IGNORECASE)
 _IMAGE_GROUP_RE = re.compile(r"\\?<image_group\s+count\s*=\s*[\"']?(\d+)[\"']?\s*>", re.IGNORECASE)
 _IMAGE_RE = re.compile(r"\\?<image\s*>", re.IGNORECASE)
@@ -96,32 +97,31 @@ def _format_image_group(image_group: str) -> str:
     return "\n<image>\n".join(entries)
 
 
-def _parse_config(config_section: str) -> str:
-    """Convert one-key-per-line config text into a Unicode JSON object."""
+def _parse_config_lines(text: str) -> dict[str, str]:
+    """Split each configuration line on its first English or Chinese colon."""
 
-    config: dict[str, str] = {}
-    for raw_line in config_section.splitlines():
-        line = raw_line.strip()
-        if not line:
-            continue
+    result: dict[str, str] = {}
+    for line in text.splitlines():
+        parts = re.split(r"[:：]", line, maxsplit=1)
+        if len(parts) == 2 and parts[0].strip():
+            result[parts[0].strip()] = parts[1].strip()
+    return result
 
-        english_colon = line.find(":")
-        chinese_colon = line.find("：")
-        positions = [position for position in (english_colon, chinese_colon) if position >= 0]
-        if not positions:
-            continue
 
-        delimiter_position = min(positions)
-        key = line[:delimiter_position].strip()
-        value = line[delimiter_position + 1 :].strip()
-        if key:
-            config[key] = value
+def _parse_config(section: str) -> str:
+    """Keep normal config at the root and nest additional API parameters."""
 
+    parts = _ADD_PARAM_RE.split(section, maxsplit=1)
+    config: dict[str, str | dict[str, str]] = dict(_parse_config_lines(parts[0]))
+    if len(parts) == 2:
+        if "api_params" in config:
+            raise ValueError("api_params 是 <add_param> 的保留键，请勿在顶层重复配置")
+        config["api_params"] = _parse_config_lines(parts[1])
     return json.dumps(config, ensure_ascii=False)
 
 
 def process_prompt(prompt: str, people_count: int = 1) -> tuple[str, str, str]:
-    """Return the processed prompt, image URL text, and config JSON text."""
+    """Return the processed prompt, image URLs, and configuration JSON text."""
 
     prompt = "" if prompt is None else str(prompt)
     people_count = 1 if people_count is None else int(people_count)
@@ -174,7 +174,7 @@ class PromptRuleProcessor:
     RETURN_NAMES = ("prompt", "image_urls", "config_json")
     FUNCTION = "process"
     CATEGORY = "文本/提示词处理"
-    DESCRIPTION = "按人数处理提示词和图片 URL，并将配置区段转换为 JSON。"
+    DESCRIPTION = "按人数处理提示词和图片 URL，并输出含额外 API 参数的配置 JSON。"
 
     def process(self, prompt: str, people_count: int = 1):
         return process_prompt(prompt, people_count)
