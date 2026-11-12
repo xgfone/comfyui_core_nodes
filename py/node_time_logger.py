@@ -4,8 +4,8 @@ import asyncio
 import inspect
 import logging
 import time
+from datetime import datetime
 from typing import Dict, List, Tuple
-
 
 LOGGER = logging.getLogger("node_time_logger")
 COMFY_NODE_TIME_LOG_MIN_MS = 20  # 只打印运行时间高于阈值的节点
@@ -13,8 +13,8 @@ COMFY_NODE_TIME_LOG = 1  # 关闭整个功能
 COMFY_NODE_TIME_LOG_SUMMARY = 1  # 关闭汇总（只打印逐节点阈值日志）
 COMFY_NODE_TIME_LOG_TOPN = 20  # 汇总 TopN
 
-# prompt_id -> list of (dt, node_id, display_id, class_type, cached, result_name)
-_NODE_TIMES: Dict[str, List[Tuple[float, str, str, str, bool, str]]] = {}
+# prompt_id -> list of (dt, finished_at, node_id, display_id, class_type, cached, result_name)
+_NODE_TIMES: Dict[str, List[Tuple[float, str, str, str, str, bool, str]]] = {}
 _LOCK = asyncio.Lock()
 
 
@@ -69,10 +69,11 @@ async def _dump_summary(prompt_id: str):
         f"[node_time] prompt={prompt_id} total={total * 1000:.1f}ms nodes={len(rows_sorted)} top={n}"
     )
     for i in range(n):
-        dt, node_id, display_id, class_type, cached, result_name = rows_sorted[i]
+        dt, finished_at, node_id, display_id, class_type, cached, result_name = rows_sorted[i]
         LOGGER.info(
             f"[node_time]  #{i + 1:02d} {dt * 1000:8.1f}ms  node={node_id} display={display_id} "
-            f"type={class_type} cached={1 if cached else 0} result={result_name}"
+            f"type={class_type} cached={1 if cached else 0} result={result_name} "
+            f"finished_at={finished_at}"
         )
 
 
@@ -118,6 +119,8 @@ def install():
         if not need_detail and not need_summary:
             return ret
 
+        finished_at = datetime.now().astimezone().isoformat(timespec="milliseconds")
+
         try:
             bound = sig_execute.bind_partial(*args, **kwargs).arguments
         except TypeError:
@@ -131,7 +134,9 @@ def install():
         # 没拿到关键字段：不影响执行，只降级输出
         if prompt_id is None or current_item is None or dynprompt is None:
             if need_detail:
-                LOGGER.info(f"[node_time] dt={dt * 1000:.1f}ms (missing bindings)")
+                LOGGER.info(
+                    f"[node_time] dt={dt * 1000:.1f}ms (missing bindings) finished_at={finished_at}"
+                )
             return ret
 
         # 丰富信息
@@ -158,6 +163,7 @@ def install():
                 str(prompt_id),
                 (
                     dt,
+                    finished_at,
                     str(current_item),
                     str(display_id),
                     str(class_type),
@@ -171,6 +177,7 @@ def install():
             LOGGER.info(
                 f"[node_time] prompt={prompt_id} node={current_item} display={display_id} "
                 f"type={class_type} dt={dt * 1000:.1f}ms cached={1 if cached else 0} result={result_name}"
+                f" finished_at={finished_at}"
             )
 
         return ret
