@@ -64,8 +64,14 @@ class MixlabImageCompressor:
                 "images": ("IMAGE",),
                 "format": (["PNG", "WEBP", "JPEG"],),
                 "quality": ("INT", {"default": 85, "min": 1, "max": 100, "display": "slider"}),
-                "resize_factor": ("FLOAT", {"default": 1.0, "min": 0.1, "max": 1.0, "step": 0.1, "display": "slider"}),
-                "compression_level": ("INT", {"default": 6, "min": 0, "max": 9, "display": "slider"}),
+                "resize_factor": (
+                    "FLOAT",
+                    {"default": 1.0, "min": 0.1, "max": 1.0, "step": 0.1, "display": "slider"},
+                ),
+                "compression_level": (
+                    "INT",
+                    {"default": 6, "min": 0, "max": 9, "display": "slider"},
+                ),
                 "save_image": ("BOOLEAN", {"default": True}),
                 "output_prefix": ("STRING", {"default": "compressed_"}),
             },
@@ -80,9 +86,17 @@ class MixlabImageCompressor:
     FUNCTION = "compress_image"
     CATEGORY = "image/Mixlab"
 
-    def compress_image(self, images, format, quality=85, resize_factor=1.0,
-                       compression_level=6, save_image=True,
-                       output_prefix="compressed_", output_path=""):
+    def compress_image(
+        self,
+        images,
+        format,
+        quality=85,
+        resize_factor=1.0,
+        compression_level=6,
+        save_image=True,
+        output_prefix="compressed_",
+        output_path="",
+    ):
         samples = list(_image_samples(images))
         prefixes = _list_values(output_prefix)
         if len(prefixes) not in (1, len(samples)):
@@ -109,7 +123,9 @@ class MixlabImageCompressor:
         outputs, infos, ui_images = [], [], []
         for index, sample in enumerate(samples):
             # Match ComfyUI's normal mapping behavior for non-prefix settings.
-            options = {name: values[min(index, len(values) - 1)] for name, values in settings.items()}
+            options = {
+                name: values[min(index, len(values) - 1)] for name, values in settings.items()
+            }
             image_format = str(options["format"]).upper()
             if image_format not in ("PNG", "WEBP", "JPEG"):
                 raise ValueError(f"不支持的压缩格式: {image_format}")
@@ -127,25 +143,44 @@ class MixlabImageCompressor:
             if not 0.1 <= factor <= 1.0:
                 raise ValueError("resize_factor 必须在 0.1 到 1.0 之间")
             if factor < 1:
-                image = image.resize(tuple(max(1, int(size * factor)) for size in image.size), Image.Resampling.LANCZOS)
+                image = image.resize(
+                    tuple(max(1, int(size * factor)) for size in image.size),
+                    Image.Resampling.LANCZOS,
+                )
             if image_format == "JPEG" and image.mode == "RGBA":
                 background = Image.new("RGB", image.size, "white")
                 background.paste(image, mask=image.getchannel("A"))
                 image = background
 
             if image_format == "PNG":
-                save_options = {"optimize": True, "compress_level": int(options["compression_level"])}
+                save_options = {
+                    "optimize": True,
+                    "compress_level": int(options["compression_level"]),
+                }
             elif image_format == "JPEG":
-                save_options = {"quality": int(options["quality"]), "optimize": True, "subsampling": 1}
+                save_options = {
+                    "quality": int(options["quality"]),
+                    "optimize": True,
+                    "subsampling": 1,
+                }
             else:
-                save_options = {"quality": int(options["quality"]), "method": 6, "lossless": False, "alpha_quality": int(options["quality"])}
+                save_options = {
+                    "quality": int(options["quality"]),
+                    "method": min(int(options["compression_level"]), 6),
+                    "lossless": False,
+                    "alpha_quality": int(options["quality"]),
+                }
             buffer = io.BytesIO()
             image.save(buffer, format=image_format, **save_options)
 
             save_path_str = "File not saved"
             if options["save_image"]:
                 path = str(options["output_path"] or "")
-                output_dir = os.path.abspath(path if os.path.isabs(path) else os.path.join(base_output_dir, path.strip("/\\") or "compressed"))
+                output_dir = os.path.abspath(
+                    path
+                    if os.path.isabs(path)
+                    else os.path.join(base_output_dir, path.strip("/\\") or "compressed")
+                )
                 prefix = prefixes[0] if len(prefixes) == 1 else prefixes[index]
                 # Preserve prefix subfolders while keeping the filename itself
                 # separate for ComfyUI's preview endpoint.
@@ -156,17 +191,34 @@ class MixlabImageCompressor:
                     file.write(buffer.getvalue())
                 save_path_str = save_path
                 try:
-                    if os.path.commonpath([base_output_dir, os.path.abspath(save_path)]) == base_output_dir:
+                    if (
+                        os.path.commonpath([base_output_dir, os.path.abspath(save_path)])
+                        == base_output_dir
+                    ):
                         subfolder = os.path.relpath(os.path.dirname(save_path), base_output_dir)
-                        ui_images.append({"filename": os.path.basename(save_path), "subfolder": "" if subfolder == "." else subfolder, "type": "output"})
+                        ui_images.append(
+                            {
+                                "filename": os.path.basename(save_path),
+                                "subfolder": "" if subfolder == "." else subfolder,
+                                "type": "output",
+                            }
+                        )
                 except ValueError:
                     pass  # An absolute output path can be on another drive.
 
             buffer.seek(0)
             with Image.open(buffer) as compressed:
-                decoded = np.asarray(compressed.convert("RGBA" if compressed.mode == "RGBA" else "RGB"), dtype=np.float32).copy() / 255.0
+                decoded = (
+                    np.asarray(
+                        compressed.convert("RGBA" if compressed.mode == "RGBA" else "RGB"),
+                        dtype=np.float32,
+                    ).copy()
+                    / 255.0
+                )
             outputs.append(torch.from_numpy(decoded).unsqueeze(0).to(sample.device))
-            infos.append(f"{save_path_str}: {_size_label(original_buffer.tell())} -> {_size_label(len(buffer.getvalue()))}")
+            infos.append(
+                f"{save_path_str}: {_size_label(original_buffer.tell())} -> {_size_label(len(buffer.getvalue()))}"
+            )
 
         result = {"result": ("Compression results:\n\n" + "\n".join(infos), outputs)}
         if ui_images:
